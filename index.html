@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta charset="utf-8">
+      <title></title>
+      <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+      <link rel="stylesheet" href="css/master.css">
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+      <script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+   </head>
+   <body>
+      <main class="container-fluid">
+         <div class="left-column">
+           <div class="side-section">
+             <h4>Favorite Character</h4>
+             <a href="http://swapi.co/api/people/10/">Obi-Wan Kenobi</a>
+           </div>
+           <div class="side-section">
+              <h4>Least Favorite Character</h4>
+              <a href="http://swapi.co/api/people/11/">Anakin Skywalker</a>
+           </div>
+           <div class="side-section">
+              <div  id="bar-chart">
+
+              </div>
+           </div>
+         </div>
+         <div class="card-holder">
+            <div class="container-fluid">
+            </div>
+         </div>
+      </main>
+      <script type="text/javascript">
+         var cardHalfText = '<div class="card-section">' +
+           '<img src="" alt="" width="100">' +
+           '<dl>' +
+             '<dt>Title:</dt>' +
+             '<dd class="film-title"></dd>' +
+             '<dt>Director:</dt>' +
+             '<dd class="film-director"></dd>' +
+             '<dt>Characters:</dt>' +
+           '</dl>' +
+         '</div>';
+         var movieCardText = '<div class="clearfix movie-card"></div>';
+         var cardHolder = $( ".card-holder .container-fluid" );
+
+         //workaround to deal with the fact that the API doesn't provide images
+         var movieImageHash = {
+            1: "http://www.coverwhiz.com/content/Star-Wars-Episode-I-The-Phantom-Menace.jpg",
+            2: "http://www.coverwhiz.com/content/Star-Wars-Episode-II-Attack-Of-The-Clones.jpg",
+            3: "http://www.coverwhiz.com/content/Star-Wars-Episode-III-Revenge-Of-The-Sith.jpg",
+            4: "http://www.coverwhiz.com/content/Star-Wars-Episode-IV-A-New-Hope.jpg",
+            5: "http://www.coverwhiz.com/content/Star-Wars-Episode-V-The-Empire-Strikes-Back.jpg",
+            6: "http://www.coverwhiz.com/content/Star-Wars-Episode-VI-Return-Of-The-Jedi.jpg",
+            7: "http://www.coverwhiz.com/content/Star-Wars-Episode-VII-The-Force-Awakens.jpg"
+         }
+
+         //function to add characters to a specific movie while retaining scope on the correct movie card
+         var addCharacter = function( cardSection, characterUrl )
+         {
+            var list = cardSection.find( "dl" );
+            $.get( characterUrl )
+               .done( function( data )
+               {
+                  list.append( "<dd><a href='" + characterUrl + "'>" + data.name + "</a></dd>" )
+               } );
+         };
+
+         //Primary driving function. Retrieves film data from swapi (Star Wars API)
+         $.get("http://swapi.co/api/films")
+            .done( function( data )
+            {
+               var crawlData = {
+                  "x": [],
+                  "y": [],
+                  "type": "bar",
+                  "name": "Opening Crawl Lengths"
+               }
+               //sort films in episode order
+               var films = data.results.sort( function( a, b )
+               {
+                  return a.episode_id - b.episode_id;
+               } );
+               var newMovieCard;
+               //itterate through movies and retrieve relevant information to display
+               for( var i = 0; i < films.length; i++ )
+               {
+                  var film = films[ i ];
+                  var newCardHalf = $( cardHalfText );
+                  newCardHalf.find( ".film-title" ).text( film.title );
+                  newCardHalf.find( ".film-director" ).text( film.director );
+
+                  //attach cover image
+                  newCardHalf.find( "img" ).attr( "src", movieImageHash[ film.episode_id ] );
+
+                  //add three characters if that many exist
+                  var numCharacters = 3;
+                  if( film.characters.length < 3 )
+                  {
+                     numCharacters = film.characters.length;
+                  }
+                  for (var j = 0; j < numCharacters; j++) {
+                     addCharacter( newCardHalf, film.characters[j] )
+                  }
+
+                  //add info to the crawl data for this movie
+                  crawlData.x.push( film.title );
+                  crawlData.y.push( film.opening_crawl.trim().split(/\s+/).length );
+
+                  if( i % 2 == 0 )
+                  {
+                     newMovieCard = $( movieCardText );
+                     newMovieCard.append( newCardHalf );
+                  }
+                  {
+                     newMovieCard.append( newCardHalf );
+                     cardHolder.append( newMovieCard );
+                  }
+               }
+               //add bar chart with acquired crawl data
+               Plotly.newPlot('bar-chart', [crawlData]);
+            } );
+      </script>
+
+   </body>
+</html>
